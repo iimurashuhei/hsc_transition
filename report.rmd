@@ -1875,12 +1875,14 @@ hccm(reg2, type = "hc0") #アプリの説明によれば、共分散の情報は
   * Variable X (b1) = 0.25908 →環境変数（独立変数）の回帰係数  
   * Variable Z (b2) = 0.12419 →感受性変数（調整変数）の回帰係数  
   * Interaction XZ (b3) = 0.09021 →交互作用項の回帰係数  
-  * Variance parameter b1 = 0.05862 →たぶんstand.errorのことだと思う  
-  * Variance parameter b2 = 0.06596 →たぶんstand.errorのことだと思う  
-  * Variance parameter b3 = 0.07769 →たぶんstand.errorのことだと思う   
+  * Variance parameter b1 = 0.05862^2 = 0.003 →たぶんstand.errorの2乗のことだと思う  
+  * Variance parameter b2 = 0.06596^2 = 0.004 →たぶんstand.errorの2乗のことだと思う  
+  * Variance parameter b3 = 0.07769^2 = 0.006 →たぶんstand.errorの2乗のことだと思う   
   * Covariance parameters b1 b3 = -0.0007060342  
   * Covariance parameters b2 b3 = -0.0017199447  
   * Degress of freedom (df) = 291 →アプリの説明によればN - 独立変数の数k - 1で計算される（この場合、295 - 3 - 1 = 291）  
+
+  * 回帰係数の分散についてはこのサイトhttp://lbm.ab.a.u-tokyo.ac.jp/~omori/kokusai/kokusai08_1218.html　によると、回帰係数の分散の平方根が標準誤差なので、それを2乗すれば分散の値となる。
 
 ![RoS on X testing](C:\Users\Iimura Shuhei\Documents\hsc_transition\figure\RoStest.png)
 
