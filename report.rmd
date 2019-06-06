@@ -1701,7 +1701,7 @@ confint(lm.medium, level = 0.95)#95%CI
 
 ###6-5-1. 各グループ全体
 ```{r scatterplot_hsc_group_together, include = TRUE}
-png("figure/hsc_plot1.png", width = 600, height = 400)
+#png("figure/hsc_plot1.png", width = 600, height = 400)
 plot1 <- ggplot(data = InputData, aes(x = environment_mean_afterEFA_T2, y = LC, group = factor(hsc.profile), colour = factor(hsc.profile))) + 
   geom_point() +
   geom_smooth(method = "lm") +
@@ -1759,8 +1759,9 @@ summary(fit.medium, se = "boot", R = 2000, bsmethod= "wild")
 ```
 
 #（8）階層的重回帰分析
-ステップ1で「性別」、ステップ2で「知覚された学校環境変化」「HSCS」、ステップ3で「知覚された学校環境変化×HSCS」を独立変数として順に投入。独立変数は「性別」以外、中心化。HSCSは1時点目の得点を用いる。従属変数はwell-beingの潜在差得点。
-参考資料として：chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/http://cogpsy.educ.kyoto-u.ac.jp/personal/Kusumi/datasem13/shinya2.pdf
+1) 環境変数と環境×感受性の非線形効果が確認されるかをまず検討  
+2) 通常の回帰分析  
+ステップ1で「知覚された学校環境変化」「HSCS」、ステップ2で「知覚された学校環境変化×HSCS」を独立変数として順に投入。独立変数は全体平均値で中心化。HSCSは1時点目の得点を用いる。従属変数はwell-beingの潜在差得点。
 
 ##8-1. 中心化得点の算出
 ```{r centering, include = TRUE}
@@ -1778,31 +1779,51 @@ cor(data.frame(dat$child_gender_T1, dat$hsc_mean_T1, dat$environment_mean_afterE
 cor(data.frame(gender, hscs_c, env_c, wellbeing))
 ```
 
-##8-3. 階層的重回帰分析ステップ1
-「性別」だけ投入。結果メモ：モデルは非有意
-```{r step_one, include = TRUE}
-reg1 <- lm(wellbeing ~ gender)
+##8-3. 非線形効果の確認
+
+###8-3-1. 階層的重回帰分析ステップ1
+「知覚された学校環境変化」と「HSCS」を投入。
+```{r step_one_nonlinear, include = TRUE}
+reg_1 <- lm(wellbeing ~ env_c + hscs_c)
+summary(reg_1)
+```
+
+###8-3-2. 階層的重回帰分析ステップ2
+「知覚された学校環境変化」と「HSCS」の2乗項を追加投入。  
+2次項は、I()関数を用いないと、計算できない。
+```{r step_two_nonlinear, include = TRUE}
+reg_2 <- lm(wellbeing ~ env_c + hscs_c + I(env_c^2) + I(hscs_c^2))
+summary(reg_2)
+```
+
+###8-3-3. 階層的重回帰分析ステップ3
+「知覚された学校環境変化 × HSCS」と「知覚された学校環境変化*2 × HSCS」を追加投入。
+```{r step_three_nonlinear, include = TRUE}
+reg_3 <- lm(wellbeing ~ env_c + hscs_c + I(env_c^2) + I(hscs_c^2) + env_c:hscs_c + I(env_c^2):hscs_c)
+summary(reg_3)
+```
+
+##8-4. 通常の階層的重回帰分析
+上記（8-3）の分析結果から、どうやら非線形効果はないことが確認されたので、通常の階層的重回帰分析を用いて、差次感受性を検討する。
+
+###8-4-1. 階層的重回帰分析ステップ1
+「知覚された学校環境変化」と「HSCS」を追加投入。結果メモ：モデルは有意。学校環境が正の効果。
+```{r step_two, include = TRUE}
+reg1 <- lm(wellbeing ~ env_c + hscs_c)
 summary(reg1)
 ```
 
-##8-3. 階層的重回帰分析ステップ2
-「知覚された学校環境変化」と「HSCS」を追加投入。結果メモ：モデルは有意。学校環境が正の効果。
-```{r step_two, include = TRUE}
-reg2 <- lm(wellbeing ~ gender + env_c + hscs_c)
+###8-4-2. 階層的重回帰分析ステップ2
+「知覚された学校環境変化」と「HSCS」の交互作用項を追加投入。結果メモ：モデルは非有意。交互作用項も非有意。  
+  * Belsky & Widaman (2018)のEditorialでは、F比が1以上であれば、交互作用の検討を行うことが推奨されている。そのため、以下では単純傾斜検定を行う。
+```{r step_three, include = TRUE}
+reg2 <- lm(wellbeing ~ env_c + hscs_c + env_c:hscs_c)
 summary(reg2)
 anova(reg1, reg2) #R^2の増加量の検定
 ```
 
-##8-4. 階層的重回帰分析ステップ3
-「知覚された学校環境変化」と「HSCS」の交互作用項を追加投入。結果メモ：モデルは非有意。交互作用項も非有意。
-```{r step_three, include = TRUE}
-reg3 <- lm(wellbeing ~ gender + env_c + hscs_c + env_c:hscs_c)
-summary(reg3)
-anova(reg2, reg3) #R^2の増加量の検定
-```
-
 ##8-5. 単純傾斜検定
-交互作用項は有意ではなかったが、一応単純傾斜検定してみる
+交互作用項は有意ではなかったが、一応単純傾斜検定してみる  
 
 ###8-5-1. HSCSの+1SDと-1SD変数の作成
 ```{r highlow, include = TRUE}
@@ -1828,15 +1849,45 @@ summary(result_l)
 参考資料としてhttps://www.slideshare.net/makotohirakawa3/mra-42251907
 ```{r pequod, include = TRUE}
 library(pequod)
-model <- lmres(LC ~ child_gender_T1 + environment_mean_afterEFA_T2 + hsc_mean_T1 + environment_mean_afterEFA_T2:hsc_mean_T1, centered = c("environment_mean_afterEFA_T2", "hsc_mean_T1"), data = dat) #交互作用の検討
+model <- lmres(LC ~ environment_mean_afterEFA_T2 + hsc_mean_T1 + environment_mean_afterEFA_T2:hsc_mean_T1, centered = c("environment_mean_afterEFA_T2", "hsc_mean_T1"), data = dat) #交互作用の検討
 summary(model)
 ```
 
-##8-7. pequodパッケージで単純傾斜検定（検算）
+##8-7. pequodパッケージで単純傾斜検定と作図（検算）
 ```{r simpless, include = TRUE}
 model_ss <- simpleSlope(model, pred ="environment_mean_afterEFA_T2", mod1 = "hsc_mean_T1")
 summary(model_ss)
 PlotSlope(model_ss) #作図
 ```
+
+##8-8. Roisman et al.(2012)の提案に基づき、RoS on Xテストを行う
+Region of Interest(RoS) on Xについての詳細は論文を参照。
+分析はRoismanらのアプリケーションを用いる：https://www.yourpersonality.net/interaction/ros.pl
+アプリでの分析に必要なパラメタ（傾きパラメタ間の共分散行列）をRで算出（以下）。  
+Rでの出力方法はPreacherのサイト参照：http://www.quantpsy.org/interact/acov.htm  
+```{r ros, include = TRUE}
+#出力のe-4というような数字は-4乗を意味している
+hccm(reg2, type = "hc0") #アプリの説明によれば、共分散の情報は、Heteroscedasticity-Corrected Covariance Matricesに含まれるとのこと。
+```
+
+必要なパラメタ  
+  * Intercept (b0) = 0.42592 →切片  
+  * Variable X (b1) = 0.25908 →環境変数（独立変数）の回帰係数  
+  * Variable Z (b2) = 0.12419 →感受性変数（調整変数）の回帰係数  
+  * Interaction XZ (b3) = 0.09021 →交互作用項の回帰係数  
+  * Variance parameter b1 = 0.05862 →たぶんstand.errorのことだと思う  
+  * Variance parameter b2 = 0.06596 →たぶんstand.errorのことだと思う  
+  * Variance parameter b3 = 0.07769 →たぶんstand.errorのことだと思う   
+  * Covariance parameters b1 b3 = -0.0007060342  
+  * Covariance parameters b2 b3 = -0.0017199447  
+  * Degress of freedom (df) = 291 →アプリの説明によればN - 独立変数の数k - 1で計算される（この場合、295 - 3 - 1 = 291）  
+
+![RoS on X testing](C:\Users\Iimura Shuhei\Documents\hsc_transition\figure\RoStest.png)
+
+  * ピンクに塗りつぶされたエリアが、Propotion of Interaction(PoI)。  
+  * PoIは、素因ストレスエリアで0.04、差次感受性エリアで0.96 。  
+  * cross over pointは知覚された学校環境が-1.333の位置
+  * 以上の結果を踏まえると、高校移行にともなう発達は、素因ストレスではないが、差次感受性というよりもヴァンテージ感受性のようにもみえる。  
+
 
 #END
